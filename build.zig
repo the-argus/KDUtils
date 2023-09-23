@@ -75,6 +75,8 @@ pub fn build(b: *std.Build) !void {
     targets.append(kdfoundation_shared) catch @panic("OOM");
     targets.append(kdutils_shared) catch @panic("OOM");
 
+    const kdbindings = b.dependency("kdbindings", .{});
+
     for (targets.items) |t| {
         t.linkLibC();
         t.linkLibCpp();
@@ -83,6 +85,13 @@ pub fn build(b: *std.Build) !void {
         t.addConfigHeader(kdfoundation_export);
         t.addConfigHeader(kdutils_export);
         t.addConfigHeader(kdgui_export);
+
+        // include kdbindings
+        t.step.dependOn(kdbindings.builder.getInstallStep());
+        t.addIncludePath(.{ .path = std.fs.path.join(
+            b.allocator,
+            &.{ kdbindings.builder.install_path, "include" },
+        ) catch @panic("OOM") });
     }
 
     zcc.createStep(b, "cdb", try targets.toOwnedSlice());

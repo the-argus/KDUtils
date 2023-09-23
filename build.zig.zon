@@ -7,5 +7,9 @@
             .url = "https://github.com/the-argus/zig-compile-commands/archive/090f6ca767de238f7eae4e13f91ecc7a299153c4.tar.gz",
             .hash = "1220ad678342c3191edebd10df1a883b7a71e245d4ee91da26b7cf6b30e4ee8fb78d",
         },
+        .kdbindings = .{
+            .url = "https://github.com/the-argus/kdbindings/archive/ed724fab8d8ab5766ab462ad7bc931ead45cb211.tar.gz",
+            .hash = "1220b8d6dc541fa3114b6a855e1172ec0c15cff4d468d349d5b7985766949427211e",
+        },
     }
 }
