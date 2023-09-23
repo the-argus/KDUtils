@@ -1,103 +1,24 @@
 const std = @import("std");
 const zcc = @import("compile_commands");
-const interface = @import("build_interface.zig");
 
-const srcdir = "src/";
-const foundationdir = "KDFoundation/";
-const utilsdir = "KDUtils/";
-const guidir = "KDGui/";
+const foundationdir = "src/KDFoundation/";
+const utilsdir = "src/KDUtils/";
+const guidir = "src/KDGui/";
 
-fn foundationSrcs(ally: std.mem.Allocator, target: std.zig.CrossTarget) []const []const u8 {
-    var srcs = std.ArrayList([]const u8).init(ally);
-    srcs.appendSlice(&.{
-        srcdir ++ foundationdir ++ "core_application.cpp",
-        srcdir ++ foundationdir ++ "event.cpp",
-        srcdir ++ foundationdir ++ "file_descriptor_notifier.cpp",
-        srcdir ++ foundationdir ++ "object.cpp",
-        srcdir ++ foundationdir ++ "postman.cpp",
-        srcdir ++ foundationdir ++ "timer.cpp",
-    }) catch @panic("OOM");
-
-    switch (target.getOsTag()) {
-        .linux => {
-            srcs.appendSlice(&.{
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_event_loop.cpp",
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_integration.cpp",
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_timer.cpp",
-            });
-        },
-        .windows => {
-            srcs.appendSlice(&.{
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_event_loop.cpp",
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_integration.cpp",
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_timer.cpp",
-            });
-        },
-        .macos => {
-            @panic("macos not implemented, TODO");
-        },
-        else => {
-            @panic("unsupported OS");
-        },
-    }
-
-    return srcs.toOwnedSlice() catch @panic("OOM");
-}
-
-fn foundationHeaders(ally: std.mem.Allocator, target: std.zig.CrossTarget) []const []const u8 {
-    var headers = std.ArrayList([]const u8).init(ally);
-    headers.appendSlice(&.{
-        srcdir ++ foundationdir ++ "constexpr_sort.h",
-        srcdir ++ foundationdir ++ "core_application.h",
-        srcdir ++ foundationdir ++ "destruction_helpers.h",
-        srcdir ++ foundationdir ++ "event_queue.h",
-        srcdir ++ foundationdir ++ "event_receiver.h",
-        srcdir ++ foundationdir ++ "event.h",
-        srcdir ++ foundationdir ++ "file_descriptor_notifier.h",
-        srcdir ++ foundationdir ++ "formatters.h",
-        srcdir ++ foundationdir ++ "hashutils.h",
-        srcdir ++ foundationdir ++ "kdfoundation_global.h",
-        srcdir ++ foundationdir ++ "logging.h",
-        srcdir ++ foundationdir ++ "object.h",
-        srcdir ++ foundationdir ++ "postman.h",
-        srcdir ++ foundationdir ++ "timer.h",
-        srcdir ++ foundationdir ++ "utils.h",
-        srcdir ++ foundationdir ++ "vector_helper.h",
-        srcdir ++ foundationdir ++ "platform/abstract_platform_event_loop.h",
-        srcdir ++ foundationdir ++ "platform/abstract_platform_integration.h",
-        srcdir ++ foundationdir ++ "platform/abstract_platform_timer.h",
-    }) catch @panic("OOM");
-
-    switch (target.getOsTag()) {
-        .linux => {
-            headers.appendSlice(&.{
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_event_loop.h",
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_integration.h",
-                srcdir ++ foundationdir ++ "platform/linux/linux_platform_timer.h",
-            });
-        },
-        .windows => {
-            headers.appendSlice(&.{
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_event_loop.h",
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_integration.h",
-                srcdir ++ foundationdir ++ "platform/win32/win32_platform_timer.h",
-            });
-        },
-        else => {
-            @panic("unsupported OS");
-        },
-    }
-    return headers.toOwnedSlice() catch @panic("OOM");
-}
+const kdfoundation_module = @import("src/KDFoundation/build.zig");
+const kdutils_module = @import("src/KDUtils/build.zig");
+const kdgui_module = @import("src/KDGui/build.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const build_static = b.option(bool, "build_static_libs", "build and install static versions of the libraries");
+    const wayland_support = b.option(bool, "wayland_support", "whether to enable wayland on linux") orelse true;
+    const build_static = b.option(bool, "build_static_libs", "build and install static versions of the libraries") orelse false;
     _ = build_static;
 
     var targets = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
+    var flags = std.ArrayList([]const u8).init(b.allocator);
 
     const kdutils_shared = b.addSharedLibrary(.{
         .target = target,
@@ -115,8 +36,40 @@ pub fn build(b: *std.Build) !void {
         .name = "KDGui",
     });
 
-    kdfoundation_shared.addIncludePath(.{ .path = srcdir ++ foundationdir });
-    kdfoundation_shared.addCSourceFiles(foundationSrcs(b.allocator, target), &.{});
+    const platform_name = if (target.abi == .android) "PLATFORM_ANDROID" else switch (target.getOsTag()) {
+        .linux => "PLATFORM_LINUX",
+        .windows => "PLATFORM_WIN32",
+        .macos => "PLATFORM_MACOS",
+        else => @panic("unsupported OS"),
+    };
+
+    const kdgui_android = target.abi == .android;
+    const kdgui_cocoa = target.getOsTag() == .macos;
+    const kdgui_wayland = target.getOsTag() == .linux and wayland_support;
+    const kdgui_xcb = target.getOsTag() == .linux;
+    const kdgui_win32 = target.getOsTag() == .windows;
+
+    flags.append(std.fmt.allocPrint(b.allocator, "-D{s}", .{platform_name}) catch @panic("OOM")) catch @panic("OOM");
+    const kdfoundation_export = b.addConfigHeader(
+        .{ .style = .{ .cmake = .{ .path = "src/KDFoundation/config.h" } }, .include_path = "KDFoundation/kdfoundation_export.h" },
+        .{ .PLATFORM_NAME = platform_name },
+    );
+    const kdutils_export = b.addConfigHeader(.{ .style = .blank, .include_path = "KDUtils/kdutils_export.h" }, .{ .KDUTILS_EXPORT = null });
+    const kdgui_export = b.addConfigHeader(
+        .{ .style = .{ .cmake = .{ .path = "src/KDGui/config.h" } }, .include_path = "KDGui/kdgui_export.h" },
+        .{
+            .KDGUI_PLATFORM_ANDROID = kdgui_android,
+            .KDGUI_PLATFORM_COCOA = kdgui_cocoa,
+            .KDGUI_PLATFORM_XCB = kdgui_xcb,
+            .KDGUI_PLATFORM_WAYLAND = kdgui_wayland,
+            .KDGUI_PLATFORM_WIN32 = kdgui_win32,
+        },
+    );
+
+    const final_flags = flags.toOwnedSlice() catch @panic("OOM");
+    kdfoundation_shared.addCSourceFiles(kdfoundation_module.sources(b.allocator, target), final_flags);
+    kdutils_shared.addCSourceFiles(kdutils_module.sources(b.allocator, target), final_flags);
+    kdgui_shared.addCSourceFiles(kdgui_module.sources(b.allocator, target), final_flags);
 
     targets.append(kdgui_shared) catch @panic("OOM");
     targets.append(kdfoundation_shared) catch @panic("OOM");
@@ -126,6 +79,10 @@ pub fn build(b: *std.Build) !void {
         t.linkLibC();
         t.linkLibCpp();
         b.installArtifact(t);
+        t.addIncludePath(.{ .path = "src/" });
+        t.addConfigHeader(kdfoundation_export);
+        t.addConfigHeader(kdutils_export);
+        t.addConfigHeader(kdgui_export);
     }
 
     zcc.createStep(b, "cdb", try targets.toOwnedSlice());
