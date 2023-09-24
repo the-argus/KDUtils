@@ -52,9 +52,17 @@ pub fn build(b: *std.Build) !void {
     flags.append(std.fmt.allocPrint(b.allocator, "-D{s}", .{platform_name}) catch @panic("OOM")) catch @panic("OOM");
     const kdfoundation_export = b.addConfigHeader(
         .{ .style = .{ .cmake = .{ .path = "src/KDFoundation/config.h" } }, .include_path = "KDFoundation/kdfoundation_export.h" },
-        .{ .PLATFORM_NAME = platform_name },
+        .{
+            .KDFOUNDATION_EXPORT = void{},
+            .PLATFORM_NAME = platform_name,
+        },
     );
-    const kdutils_export = b.addConfigHeader(.{ .style = .blank, .include_path = "KDUtils/kdutils_export.h" }, .{ .KDUTILS_EXPORT = null });
+    const kdutils_export = b.addConfigHeader(
+        .{ .style = .blank, .include_path = "KDUtils/kdutils_export.h" },
+        .{
+            .KDUTILS_EXPORT = void{},
+        },
+    );
     const kdgui_export = b.addConfigHeader(
         .{ .style = .{ .cmake = .{ .path = "src/KDGui/config.h" } }, .include_path = "KDGui/kdgui_export.h" },
         .{
@@ -70,6 +78,24 @@ pub fn build(b: *std.Build) !void {
     kdfoundation_shared.addCSourceFiles(kdfoundation_module.sources(b.allocator, target), final_flags);
     kdutils_shared.addCSourceFiles(kdutils_module.sources(b.allocator, target), final_flags);
     kdgui_shared.addCSourceFiles(kdgui_module.sources(b.allocator, target), final_flags);
+
+    // system libraries
+    switch (target.getOsTag()) {
+        .linux => {
+            kdgui_shared.linkSystemLibrary("xcb");
+            if (wayland_support) {
+                // TODO: does this work
+                kdgui_shared.linkSystemLibrary("wayland");
+            }
+        },
+        .windows => {
+            @panic("system libs for windows not set up");
+        },
+        .macos => {
+            @panic("system frameworks for macos not ste up");
+        },
+        else => @panic("unsupported OS"),
+    }
 
     targets.append(kdgui_shared) catch @panic("OOM");
     targets.append(kdfoundation_shared) catch @panic("OOM");
