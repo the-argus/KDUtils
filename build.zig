@@ -104,6 +104,7 @@ pub fn build(b: *std.Build) !void {
     targets.append(kdutils_shared) catch @panic("OOM");
 
     const kdbindings = b.dependency("kdbindings", .{});
+    const mio = b.dependency("mio", .{});
     const spdlog = b.dependency("spdlog", .{ .exceptions = true }).artifact("spdlog");
     const whereami = b.dependency("whereami", .{}).artifact("whereami");
 
@@ -123,6 +124,12 @@ pub fn build(b: *std.Build) !void {
         t.addIncludePath(.{ .path = std.fs.path.join(
             b.allocator,
             &.{ kdbindings.builder.install_path, "include" },
+        ) catch @panic("OOM") });
+
+        t.step.dependOn(mio.builder.getInstallStep());
+        t.addIncludePath(.{ .path = std.fs.path.join(
+            b.allocator,
+            &.{ mio.builder.install_path, "include" },
         ) catch @panic("OOM") });
     }
 

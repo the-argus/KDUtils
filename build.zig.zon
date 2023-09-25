@@ -19,5 +19,9 @@
             .url = "https://github.com/the-argus/whereami/archive/eafecc93bf8448ace5f565f7989fae24f2abe143.tar.gz",
             .hash = "1220e6f771f11639efa66def50a234150c07a16c281582ae9d347aa215bbc52948fb",
         },
+        .mio = .{
+            .url = "https://github.com/the-argus/mio/archive/de308ffafcfadae12d660268d8378bd5e70ce83a.tar.gz",
+            .hash = "1220e58f58a5465dcab3d24f911bab435112f59b2f40a8c457162e3ec7f681edaad4",
+        },
     }
 }
