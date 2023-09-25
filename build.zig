@@ -36,12 +36,28 @@ pub fn build(b: *std.Build) !void {
         .name = "KDGui",
     });
 
-    const platform_name = if (target.abi == .android) "PLATFORM_ANDROID" else switch (target.getOsTag()) {
-        .linux => "PLATFORM_LINUX",
-        .windows => "PLATFORM_WIN32",
-        .macos => "PLATFORM_MACOS",
-        else => @panic("unsupported OS"),
+    const foundation_export_android = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_ANDROID = void{} };
+    const foundation_export_linux = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_LINUX = void{} };
+    const foundation_export_windows = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_WIN32 = void{} };
+    const foundation_export_macos = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_MACOS = void{} };
+    const foundation_export_settings = .{
+        .style = .blank,
+        .include_path = "KDFoundation/kdfoundation_export.h",
     };
+
+    const kdfoundation_export = (if (target.abi == .android) b.addConfigHeader(foundation_export_settings, foundation_export_android) else switch (target.getOsTag()) {
+        .linux => b.addConfigHeader(foundation_export_settings, foundation_export_linux),
+        .windows => b.addConfigHeader(foundation_export_settings, foundation_export_windows),
+        .macos => b.addConfigHeader(foundation_export_settings, foundation_export_macos),
+        else => @panic("unsupported OS"),
+    });
+
+    const kdutils_export = b.addConfigHeader(
+        .{ .style = .blank, .include_path = "KDUtils/kdutils_export.h" },
+        .{
+            .KDUTILS_EXPORT = void{},
+        },
+    );
 
     const kdgui_android = target.abi == .android;
     const kdgui_cocoa = target.getOsTag() == .macos;
@@ -49,20 +65,6 @@ pub fn build(b: *std.Build) !void {
     const kdgui_xcb = target.getOsTag() == .linux;
     const kdgui_win32 = target.getOsTag() == .windows;
 
-    flags.append(std.fmt.allocPrint(b.allocator, "-D{s}", .{platform_name}) catch @panic("OOM")) catch @panic("OOM");
-    const kdfoundation_export = b.addConfigHeader(
-        .{ .style = .{ .cmake = .{ .path = "src/KDFoundation/config.h" } }, .include_path = "KDFoundation/kdfoundation_export.h" },
-        .{
-            .KDFOUNDATION_EXPORT = void{},
-            .PLATFORM_NAME = platform_name,
-        },
-    );
-    const kdutils_export = b.addConfigHeader(
-        .{ .style = .blank, .include_path = "KDUtils/kdutils_export.h" },
-        .{
-            .KDUTILS_EXPORT = void{},
-        },
-    );
     const kdgui_export = b.addConfigHeader(
         .{ .style = .{ .cmake = .{ .path = "src/KDGui/config.h" } }, .include_path = "KDGui/kdgui_export.h" },
         .{
