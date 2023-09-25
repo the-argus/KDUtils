@@ -40,15 +40,30 @@ pub fn build(b: *std.Build) !void {
     const foundation_export_linux = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_LINUX = void{} };
     const foundation_export_windows = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_WIN32 = void{} };
     const foundation_export_macos = .{ .KDFOUNDATION_EXPORT = void{}, .KD_PLATFORM_MACOS = void{} };
+    const foundation_config_android = .{ .KD_PLATFORM_ANDROID = void{} };
+    const foundation_config_linux = .{ .KD_PLATFORM_LINUX = void{} };
+    const foundation_config_windows = .{ .KD_PLATFORM_WIN32 = void{} };
+    const foundation_config_macos = .{ .KD_PLATFORM_MACOS = void{} };
     const foundation_export_settings = .{
         .style = .blank,
         .include_path = "KDFoundation/kdfoundation_export.h",
+    };
+    const foundation_config_settings = .{
+        .style = .blank,
+        .include_path = "KDFoundation/config.h",
     };
 
     const kdfoundation_export = (if (target.abi == .android) b.addConfigHeader(foundation_export_settings, foundation_export_android) else switch (target.getOsTag()) {
         .linux => b.addConfigHeader(foundation_export_settings, foundation_export_linux),
         .windows => b.addConfigHeader(foundation_export_settings, foundation_export_windows),
         .macos => b.addConfigHeader(foundation_export_settings, foundation_export_macos),
+        else => @panic("unsupported OS"),
+    });
+
+    const kdfoundation_config = (if (target.abi == .android) b.addConfigHeader(foundation_config_settings, foundation_config_android) else switch (target.getOsTag()) {
+        .linux => b.addConfigHeader(foundation_config_settings, foundation_config_linux),
+        .windows => b.addConfigHeader(foundation_config_settings, foundation_config_windows),
+        .macos => b.addConfigHeader(foundation_config_settings, foundation_config_macos),
         else => @panic("unsupported OS"),
     });
 
@@ -116,6 +131,7 @@ pub fn build(b: *std.Build) !void {
         b.installArtifact(t);
         t.addIncludePath(.{ .path = "src/" });
         t.addConfigHeader(kdfoundation_export);
+        t.addConfigHeader(kdfoundation_config);
         t.addConfigHeader(kdutils_export);
         t.addConfigHeader(kdgui_export);
         t.linkLibrary(spdlog);
