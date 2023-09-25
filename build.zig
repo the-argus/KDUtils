@@ -87,6 +87,7 @@ pub fn build(b: *std.Build) !void {
     switch (target.getOsTag()) {
         .linux => {
             kdgui_shared.linkSystemLibrary("xcb");
+            kdgui_shared.linkSystemLibrary("xkbcommon");
             if (wayland_support) {
                 kdgui_shared.linkSystemLibrary("wayland-client");
             }
