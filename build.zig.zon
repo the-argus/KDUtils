@@ -11,5 +11,9 @@
             .url = "https://github.com/the-argus/kdbindings/archive/ed724fab8d8ab5766ab462ad7bc931ead45cb211.tar.gz",
             .hash = "1220b8d6dc541fa3114b6a855e1172ec0c15cff4d468d349d5b7985766949427211e",
         },
+        .spdlog = .{
+            .url = "https://github.com/the-argus/spdlog/archive/ddbb2d1e28df35708c0e61a93d3f3e789d1f28e8.tar.gz",
+            .hash = "1220fd3725aebc3b18a5ecb572f671a6716705b1ed8057965946c70b5e0e25fd4f3d",
+        },
     }
 }
