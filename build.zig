@@ -66,13 +66,15 @@ pub fn build(b: *std.Build) !void {
     const kdgui_win32 = target.getOsTag() == .windows;
 
     const kdgui_export = b.addConfigHeader(
-        .{ .style = .{ .cmake = .{ .path = "src/KDGui/config.h" } }, .include_path = "KDGui/kdgui_export.h" },
+        .{ .style = .blank, .include_path = "KDGui/kdgui_export.h" },
         .{
             .KDGUI_PLATFORM_ANDROID = kdgui_android,
             .KDGUI_PLATFORM_COCOA = kdgui_cocoa,
             .KDGUI_PLATFORM_XCB = kdgui_xcb,
             .KDGUI_PLATFORM_WAYLAND = kdgui_wayland,
             .KDGUI_PLATFORM_WIN32 = kdgui_win32,
+            // TODO: dllspec export for windows
+            .KDGUI_EXPORT = void{},
         },
     );
 
