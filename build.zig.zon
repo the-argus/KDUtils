@@ -15,5 +15,9 @@
             .url = "https://github.com/the-argus/spdlog/archive/ddbb2d1e28df35708c0e61a93d3f3e789d1f28e8.tar.gz",
             .hash = "1220fd3725aebc3b18a5ecb572f671a6716705b1ed8057965946c70b5e0e25fd4f3d",
         },
+        .whereami = .{
+            .url = "https://github.com/the-argus/whereami/archive/eafecc93bf8448ace5f565f7989fae24f2abe143.tar.gz",
+            .hash = "1220e6f771f11639efa66def50a234150c07a16c281582ae9d347aa215bbc52948fb",
+        },
     }
 }

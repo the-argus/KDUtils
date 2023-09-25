@@ -104,7 +104,8 @@ pub fn build(b: *std.Build) !void {
     targets.append(kdutils_shared) catch @panic("OOM");
 
     const kdbindings = b.dependency("kdbindings", .{});
-    const spdlog = b.dependency("spdlog", .{ .exceptions = true });
+    const spdlog = b.dependency("spdlog", .{ .exceptions = true }).artifact("spdlog");
+    const whereami = b.dependency("whereami", .{}).artifact("whereami");
 
     for (targets.items) |t| {
         t.linkLibC();
@@ -114,7 +115,8 @@ pub fn build(b: *std.Build) !void {
         t.addConfigHeader(kdfoundation_export);
         t.addConfigHeader(kdutils_export);
         t.addConfigHeader(kdgui_export);
-        t.linkLibrary(spdlog.artifact("spdlog"));
+        t.linkLibrary(spdlog);
+        t.linkLibrary(whereami);
 
         // include kdbindings
         t.step.dependOn(kdbindings.builder.getInstallStep());
