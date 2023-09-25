@@ -88,8 +88,7 @@ pub fn build(b: *std.Build) !void {
         .linux => {
             kdgui_shared.linkSystemLibrary("xcb");
             if (wayland_support) {
-                // TODO: does this work
-                kdgui_shared.linkSystemLibrary("wayland");
+                kdgui_shared.linkSystemLibrary("wayland-client");
             }
         },
         .windows => {
