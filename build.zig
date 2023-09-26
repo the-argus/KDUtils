@@ -122,14 +122,9 @@ pub fn build(b: *std.Build) !void {
         else => @panic("unsupported OS"),
     }
 
-    targets.append(kdgui_shared) catch @panic("OOM");
-    targets.append(kdfoundation_shared) catch @panic("OOM");
-    targets.append(kdutils_shared) catch @panic("OOM");
-
-    const kdbindings = b.dependency("kdbindings", .{});
-    const mio = b.dependency("mio", .{});
-    const spdlog = b.dependency("spdlog", .{ .exceptions = true }).artifact("spdlog");
-    const whereami = b.dependency("whereami", .{}).artifact("whereami");
+    // dependency chain
+    kdgui_shared.linkLibrary(kdfoundation_shared);
+    kdfoundation_shared.linkLibrary(kdutils_shared);
 
     // install headers
     const kdutils_headers = kdutils_module.headers(b.allocator, target);
@@ -139,6 +134,16 @@ pub fn build(b: *std.Build) !void {
     installHeadersFor(kdutils_shared, b.allocator, "KDUtils", kdutils_headers);
     installHeadersFor(kdfoundation_shared, b.allocator, "KDFoundation", kdfoundation_headers);
     installHeadersFor(kdgui_shared, b.allocator, "KDGui", kdgui_headers);
+
+    // append to targets and do stuff thats shared by all targets
+    targets.append(kdgui_shared) catch @panic("OOM");
+    targets.append(kdfoundation_shared) catch @panic("OOM");
+    targets.append(kdutils_shared) catch @panic("OOM");
+
+    const kdbindings = b.dependency("kdbindings", .{});
+    const mio = b.dependency("mio", .{});
+    const spdlog = b.dependency("spdlog", .{ .exceptions = true }).artifact("spdlog");
+    const whereami = b.dependency("whereami", .{}).artifact("whereami");
 
     for (targets.items) |t| {
         t.linkLibC();
