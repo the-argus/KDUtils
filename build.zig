@@ -93,6 +93,12 @@ pub fn build(b: *std.Build) !void {
         },
     );
 
+    // publicly install config headers
+    kdgui_shared.installConfigHeader(kdgui_export, .{});
+    kdfoundation_shared.installConfigHeader(kdfoundation_export, .{});
+    kdfoundation_shared.installConfigHeader(kdfoundation_config, .{});
+    kdutils_shared.installConfigHeader(kdutils_export, .{});
+
     const final_flags = flags.toOwnedSlice() catch @panic("OOM");
     kdfoundation_shared.addCSourceFiles(kdfoundation_module.sources(b.allocator, target), final_flags);
     kdutils_shared.addCSourceFiles(kdutils_module.sources(b.allocator, target), final_flags);
@@ -125,15 +131,27 @@ pub fn build(b: *std.Build) !void {
     const spdlog = b.dependency("spdlog", .{ .exceptions = true }).artifact("spdlog");
     const whereami = b.dependency("whereami", .{}).artifact("whereami");
 
+    // install headers
+    const kdutils_headers = kdutils_module.headers(b.allocator, target);
+    const kdfoundation_headers = kdfoundation_module.headers(b.allocator, target);
+    const kdgui_headers = kdgui_module.headers(b.allocator, target);
+
+    installHeadersFor(kdutils_shared, b.allocator, "KDUtils", kdutils_headers);
+    installHeadersFor(kdfoundation_shared, b.allocator, "KDFoundation", kdfoundation_headers);
+    installHeadersFor(kdgui_shared, b.allocator, "KDGui", kdgui_headers);
+
     for (targets.items) |t| {
         t.linkLibC();
         t.linkLibCpp();
         b.installArtifact(t);
         t.addIncludePath(.{ .path = "src/" });
+
+        // include the config headers for our own private use
         t.addConfigHeader(kdfoundation_export);
         t.addConfigHeader(kdfoundation_config);
         t.addConfigHeader(kdutils_export);
         t.addConfigHeader(kdgui_export);
+
         t.linkLibrary(spdlog);
         t.linkLibrary(whereami);
 
@@ -144,6 +162,7 @@ pub fn build(b: *std.Build) !void {
             &.{ kdbindings.builder.install_path, "include" },
         ) catch @panic("OOM") });
 
+        // include mio
         t.step.dependOn(mio.builder.getInstallStep());
         t.addIncludePath(.{ .path = std.fs.path.join(
             b.allocator,
@@ -152,4 +171,16 @@ pub fn build(b: *std.Build) !void {
     }
 
     zcc.createStep(b, "cdb", try targets.toOwnedSlice());
+}
+
+fn installHeadersFor(
+    target_step: *std.Build.Step.Compile,
+    ally: std.mem.Allocator,
+    comptime dest_folder: []const u8,
+    header_files: []const []const u8,
+) void {
+    for (header_files) |header| {
+        const dest = std.fs.path.join(ally, &.{ dest_folder, std.fs.path.basename(header) }) catch @panic("OOM");
+        target_step.installHeader(header, dest);
+    }
 }
