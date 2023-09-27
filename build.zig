@@ -124,6 +124,7 @@ pub fn build(b: *std.Build) !void {
 
     // dependency chain
     kdgui_shared.linkLibrary(kdfoundation_shared);
+    kdgui_shared.linkLibrary(kdutils_shared);
     kdfoundation_shared.linkLibrary(kdutils_shared);
 
     // install headers
